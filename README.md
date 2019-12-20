@@ -1,1 +1,1 @@
-# datastax-github-stats
+# github-stats
