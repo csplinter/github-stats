@@ -10,6 +10,6 @@ Pulls all public Github repos for an organization and writes their view counts t
 python GithubStats.py -t <token> -o <github-org> -s <YYYY-MM-DD>
 ```
 
-This will output text to the command line and produce a .csv file named `github-stats-YYYY-MM-DD.csv`
+This will output text to the console and produce a .csv file named `github-stats-YYYY-MM-DD.csv`
 
 This is hard-coded to pull stats for 7 days after the start date specified.
