@@ -1,63 +1,87 @@
 import argparse
+import csv
+from datetime import datetime, timedelta
 from github import Github
 from github.GithubException import GithubException
 
 
-def get_views(g, repo, start):
+CSV_NAME = 'github-stats-' + datetime.now().strftime("%Y-%m-%d") + '.csv'
+DATES = []
+
+
+def set_dates_for_week(start):
+    DATES.append(start)
+
+    start_date = datetime.strptime(start, '%Y-%m-%d')
+
+    for x in range(1, 7):
+        DATES.append(datetime.strftime(start_date + timedelta(days=x), '%Y-%m-%d'))
+
+
+def get_views(g, repo):
     repo = g.get_repo(repo)
-    print(repo)
+    print(repo.full_name)
+
+    csv_row = [repo.full_name]
+
     try:
         c = repo.get_views_traffic()
-        print(c)
 
         views = c.get('views')
-        if len(views) < 14:
-            print("Detected less than 14 data entries, manual calculation required")
-            print(views)
-        else:
-            track = 0
-            week_count = 0
-            end_date = "not-set"
 
+        weekly_view_count = 0
+
+        for date in DATES:
+            found = False
             for v in views:
-                if start in v.timestamp.strftime("%Y-%m-%d"):
-                    print("found start_date in: " + str(v))
-                    track += 1
+                if date in v.timestamp.strftime("%Y-%m-%d"):
+                    found = True
+                    print("Adding views for " + date + " to weekly count for " + repo.full_name + ": " + str(v.count))
+                    csv_row.append(v.count)
+                    weekly_view_count += v.count
+            if found is False:
+                print("No stats entry found for date: " + date)
+                csv_row.append(0)
 
-                if 0 < track <= 7:
-                    print("adding view count for day: " + str(v))
-                    week_count += v.count
-                    if track == 7:
-                        end_date = v.timestamp.strftime("%Y-%m-%d")
-                    track += 1
-
-            print("Total View Count for " + start + " to " + end_date + ": " + str(week_count))
-
-    except GithubException as e:
+        print(DATES[0] + " to " + DATES[6] + " view count for " + repo.full_name + ": " + str(weekly_view_count))
         print()
-        print("Skipping " + repo.full_name + " because of exception")
-        print(e)
+        csv_row.append(weekly_view_count)
+
+        with open(CSV_NAME, mode='a') as output:
+            writer = csv.writer(output, delimiter=',')
+            writer.writerow(csv_row)
+
+    except GithubException:
+        print(repo.full_name + ": Skipping because of exception")
         print()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--all', action='store')
+    parser.add_argument('-a', '--all', default='all', action='store')
     parser.add_argument('-o', '--github_org', action='store')
     parser.add_argument('-r', '--github_repo', action='store')
     parser.add_argument('-t', '--github_access_token', action='store')
     parser.add_argument('-s', '--start_date', action='store')
 
     args = parser.parse_args()
+
     g = Github(args.github_access_token)
+
+    set_dates_for_week(args.start_date)
+
+    with open(CSV_NAME, mode='w') as output:
+        fields = ['Repository'] + DATES + ['Week Total']
+        writer = csv.writer(output, delimiter=',')
+        writer.writerow(fields)
 
     if args.all == "all":
         org = g.search_repositories(query='org:{o} is:public'.format(o=args.github_org))
 
         for r in org:
-            get_views(g, r.full_name, args.start_date)
+            get_views(g, r.full_name)
     else:
-        get_views(g, args.github_org + "/" + args.github_repo, args.start_date)
+        get_views(g, args.github_org + "/" + args.github_repo)
 
 
 if __name__ == "__main__":
