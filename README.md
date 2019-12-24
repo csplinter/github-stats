@@ -4,6 +4,7 @@ Pulls all public Github repos for an organization and writes their view counts t
 ### Prerequisites
 1. Python 3
 2. PyGithub installed - `pip install PyGithub`
+3. Push access - the [Github Traffic API](https://developer.github.com/v3/repos/traffic/) requires push access to see statistics
 
 ### Running
 ```bash
