@@ -120,10 +120,16 @@ def main():
         set_dates_for_week(args.start_date)
 
     if args.mode == "views":
-        org = g.search_repositories(query='org:{o} is:public'.format(o=args.github_org))
+        org = g.search_repositories(query='org:{o}'.format(o=args.github_org))
 
         for r in org:
             get_views(g, r.full_name)
+
+        if args.github_org == "KillrVideo":
+            get_views(g, g.get_repo("KillrVideo/killrvideo-java").full_name)
+            get_views(g, g.get_repo("KillrVideo/killrvideo-integration-tests").full_name)
+            get_views(g, g.get_repo("KillrVideo/killrvideo-csharp").full_name)
+
     elif args.mode == "commits":
         get_commits(g, args.github_org + '/' + args.github_repo,
                     datetime.strptime(args.start_date, '%Y-%m-%d'),
@@ -134,4 +140,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
