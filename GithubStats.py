@@ -133,7 +133,7 @@ def main():
     elif args.mode == "commits":
         get_commits(g, args.github_org + '/' + args.github_repo,
                     datetime.strptime(args.start_date, '%Y-%m-%d'),
-                    datetime.strptime(DATES[6], '%Y-%m-%d'))
+                    datetime.strptime(DATES[6], '%Y-%m-%d') + timedelta(days=1))
     elif args.mode == 'contributors':
         get_contributors(g, args.github_org + '/' + args.github_repo)
 
