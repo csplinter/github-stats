@@ -111,6 +111,7 @@ def main():
     parser.add_argument('-r', '--github_repo', action='store')
     parser.add_argument('-t', '--github_access_token', action='store')
     parser.add_argument('-s', '--start_date', action='store')
+    parser.add_argument('-x', '--term', action='store')
 
     args = parser.parse_args()
 
@@ -136,6 +137,28 @@ def main():
                     datetime.strptime(DATES[6], '%Y-%m-%d') + timedelta(days=1))
     elif args.mode == 'contributors':
         get_contributors(g, args.github_org + '/' + args.github_repo)
+    elif args.mode == 'refs':
+        in_repo_name = g.search_repositories(query='{t} in:name created:>{s}'.format(t=args.term, s=args.start_date))
+        in_description = g.search_repositories(query='{t} in:description created:>{s}'.format(t=args.term, s=args.start_date))
+        in_readme = g.search_repositories(query='{t} in:readme created:>{s}'.format(t=args.term, s=args.start_date))
+        combined_list = []
+        print('Found public repositories created since {s} with {t},'.format(s=args.start_date, t=args.term))
+        print('in the name: {x}'.format(x=in_repo_name.totalCount))
+        print('in the description: {x}'.format(x=in_description.totalCount))
+        print('in the readme: {x}'.format(x=in_readme.totalCount))
+
+        for repo in in_repo_name:
+            combined_list.append(repo.full_name)
+
+        for repo in in_description:
+            combined_list.append(repo.full_name)
+
+        for repo in in_readme:
+            combined_list.append(repo.full_name)
+
+        combined_set = set(combined_list)
+        print('Count of unique repositories created since {s} referencing {t}: {x}'
+              ''.format(s=args.start_date, t=args.term, x=len(combined_set)))
 
 
 if __name__ == "__main__":
