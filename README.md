@@ -31,5 +31,13 @@ This will produce a .csv file named `github-stats-contributors-<github-org>-<git
 python GithubStats.py -m contributors -t <token> -o <github-org> -r <github-repo> -s <YYYY-MM-DD>
 ```
 
+#### References
+Get repositories created that reference a term
+
+This produces output to the console
+```bash
+python GithubStats.py -m refs -t <token> -x <term> -s <YYYY-MM-DD>
+```
+
 
 
