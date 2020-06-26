@@ -36,8 +36,15 @@ Get repositories created that reference a term
 
 This produces output to the console
 ```bash
-python GithubStats.py -m refs -t <token> -x <term> -s <YYYY-MM-DD>
+python GithubStats.py -m refs -t <token> -x <term> -s <YYYY-MM-DD> -e <YYYY-MM-DD>
 ```
 
+#### Send all stats to a Google Sheet
+Get views (unique and count), clones (unique and count), stars, forks, issues, comments, and reactions
+
+This sends a row to the specified Google Sheet
+```bash
+python GithubStats.py -m usage -t <token> -o <org> -r <repo> -g --gsheet_creds_file=<service-account-json> --gsheet_name=<google-sheet-name> --gsheet_worksheet_name=<worksheet-name>
+```
 
 
