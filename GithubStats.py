@@ -2,6 +2,8 @@ import argparse
 import csv
 import os
 import pygsheets
+import schedule
+import time
 from datetime import datetime, timedelta
 from github import Github
 from github.GithubException import GithubException
@@ -189,6 +191,33 @@ def get_all_stats_for_day(g, repo, day=None, gsheet=False, gsheet_creds_file=Non
             print(dictlist)
 
 
+def get_refs_for_day(g, ref, day=None, gsheet=False, gsheet_creds_file=None, gsheet_name=None, gsheet_worksheet_name=None, reflist=None):
+    row = []
+
+    if not day:
+        day = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    row.append(day)
+
+    if gsheet:
+        gsheet = pygsheets.authorize(service_file=gsheet_creds_file).open(gsheet_name)
+        github_wks = gsheet.worksheet_by_title(gsheet_worksheet_name)
+        cells = github_wks.get_all_values(include_tailing_empty=False, include_tailing_empty_rows=False,
+                                          returnas='cells')
+        last_row = len(cells)
+
+    for r in reflist:
+        in_repo_name = g.search_repositories(
+            query='{t} in:name created:{s}'.format(t=r, s=day))
+        in_description = g.search_repositories(
+            query='{t} in:description created:{s}'.format(t=r, s=day))
+        in_readme = g.search_repositories(
+            query='{t} in:readme created:{s}'.format(t=r, s=day))
+
+        combined_list = [day, r, in_repo_name.totalCount, in_description.totalCount, in_readme.totalCount]
+        github_wks.insert_rows(last_row, number=1, values=combined_list)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', default='mode', action='store')
@@ -204,15 +233,55 @@ def main():
     parser.add_argument('--gsheet_creds_file', action='store')
     parser.add_argument('--gsheet_name', action='store')
     parser.add_argument('--gsheet_worksheet_name', action='store')
+    parser.add_argument('--schedule', action='store_true')
 
     args = parser.parse_args()
 
     g = Github(args.github_access_token)
 
+    if args.mode == 'refsday':
+        if not args.start_date:
+            day = None
+        else:
+            day = args.start_date
+
+        reflist = args.term.split(',')
+        if args.gsheet:
+            if not args.gsheet_creds_file:
+                raise Exception("Must specify --gsheet_creds_file when using -g")
+            if not args.gsheet_name:
+                raise Exception("Must specify --gsheet_name when using -g")
+            if not args.gsheet_worksheet_name:
+                raise Exception("Must specify --gsheet_worksheet_name when using -g")
+            if args.schedule:
+                schedule.every().day.at('00:00').do(get_refs_for_day, g, args.term,
+                                                                     day=day,
+                                                                     gsheet=True,
+                                                                     gsheet_creds_file=args.gsheet_creds_file,
+                                                                     gsheet_name=args.gsheet_name,
+                                                                     gsheet_worksheet_name=args.gsheet_worksheet_name,
+                                                                     reflist=reflist)
+                while True:
+                    schedule.run_pending()
+                    time.sleep(3600)
+            else:
+                get_refs_for_day(g, args.term,
+                                      day=day,
+                                      gsheet=True,
+                                      gsheet_creds_file=args.gsheet_creds_file,
+                                      gsheet_name=args.gsheet_name,
+                                      gsheet_worksheet_name=args.gsheet_worksheet_name,
+                                    reflist=reflist)
+
     if args.mode == 'usage':
         list_of_excluded_contributors = args.exclude_contributors
         if list_of_excluded_contributors is not []:
             list_of_excluded_contributors = args.exclude_contributors.split(',')
+
+        if not args.start_date:
+            day = None
+        else:
+            day = args.start_date
 
         if args.gsheet:
             if not args.gsheet_creds_file:
@@ -221,17 +290,31 @@ def main():
                 raise Exception("Must specify --gsheet_name when using -g")
             if not args.gsheet_worksheet_name:
                 raise Exception("Must specify --gsheet_worksheet_name when using -g")
-            get_all_stats_for_day(g, args.github_org + '/' + args.github_repo,
-                                  gsheet=True,
-                                  gsheet_creds_file=args.gsheet_creds_file,
-                                  gsheet_name=args.gsheet_name,
-                                  gsheet_worksheet_name=args.gsheet_worksheet_name,
-                                  excluded_contributors=list_of_excluded_contributors)
+            if args.schedule:
+                schedule.every().day.at('00:00').do(get_all_stats_for_day, g, args.github_org + '/' + args.github_repo,
+                                                    day=day,
+                                                    gsheet=True,
+                                                    gsheet_creds_file=args.gsheet_creds_file,
+                                                    gsheet_name=args.gsheet_name,
+                                                    gsheet_worksheet_name=args.gsheet_worksheet_name,
+                                                    excluded_contributors=list_of_excluded_contributors)
+                while True:
+                    schedule.run_pending()
+                    time.sleep(3600)
+            else:
+                get_all_stats_for_day(g, args.github_org + '/' + args.github_repo,
+                                      day=day,
+                                      gsheet=True,
+                                      gsheet_creds_file=args.gsheet_creds_file,
+                                      gsheet_name=args.gsheet_name,
+                                      gsheet_worksheet_name=args.gsheet_worksheet_name,
+                                      excluded_contributors=list_of_excluded_contributors)
         else:
             get_all_stats_for_day(g, args.github_org + '/' + args.github_repo,
+                                  day=day,
                                   excluded_contributors=list_of_excluded_contributors)
 
-    if args.mode != 'contributors' and args.mode != 'usage':
+    if args.mode != 'contributors' and args.mode != 'usage' and args.mode != 'refsday':
         set_dates_for_week(args.start_date)
 
     if args.mode == "views":
